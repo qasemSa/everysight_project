@@ -1,18 +1,3 @@
-/*
- * This work contains files distributed in Android, such files Copyright (C) 2016 The Android Open Source Project
- *
- * and are Licensed under the Apache License, Version 2.0 (the "License"); you may not use these files except
- * in compliance with the License. You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under the License
- * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
- * or implied. See the License for the specific language governing permissions and limitations under
- * the License.
-*/
-
-
 package com.example.everysight.myapplication;
 
 import android.Manifest;
@@ -48,47 +33,40 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.text.DecimalFormat;
 
-/*
-This is a standard Android Location service example. No difference what-so-ever.
-The only thing you should keep in mind is the source of the GPS data.
-The source depends on Glasses global system configuration.
-It can be either from on-board glasses GPS or paired phone location service.
-*/
 public class MainActivity extends EvsCarouselActivity implements LocationListener,SensorEventListener
 {
 
     private SurfaceView surfaceView;
     private FrameLayout cameraContainerLayout;
     private AROverlayView arOverlayView;
-    private ARCamera arCamera;
 
     private final static int REQUEST_CAMERA_PERMISSIONS_CODE = 11;
     public static final int REQUEST_LOCATION_PERMISSIONS_CODE = 0;
 
-    private static final long MIN_DISTANCE_CHANGE_FOR_UPDATES = 0; // 10 meters
-    private static final long MIN_TIME_BW_UPDATES = 0;//1000 * 60 * 1; // 1 minute
+    private static final long MIN_DISTANCE_CHANGE_FOR_UPDATES = 0; //TODO check this
+    private static final long MIN_TIME_BW_UPDATES = 0;
 
     public Location mlocation;
-    boolean isGPSEnabled;
-    boolean isNetworkEnabled;
-    boolean locationServiceAvailable;
+    private LocationManager mLocationManager = null;
+
 
     private final String TAG = "MainActivity";
     private TextView mCxtCenterLable = null;
     private TextView mMenuLable = null;
-    private LocationManager mLocationManager = null;
-    private EvsPopupManager mPopupManager;
-    private File points_file;
-    private double[] x_cordinate;
+
+    private EvsPopupManager mPopupManager; // TODO
+
+    private double[] lat_cordinate;
     private int cordinate_pointer;
-    private double[] y_cordinate;
-    private static final double Earth_Radius = 6372.797560856;
+    private double[] lon_cordinate;
+
+    private static final double Earth_Radius = 6372.797560856; // TODO
     private boolean first_launch = true;
+
     private SensorManager mSensorManager;
     private Sensor mQuaternion;
-    private DecimalFormat mFormat;
+
     private float[] mLosAngles = null;
 
     private void save_text(String str){
@@ -99,33 +77,32 @@ public class MainActivity extends EvsCarouselActivity implements LocationListene
         }
 
         FileOutputStream fileOutputStream = null;
-        try
-        {
+         try{
             File data_file = new File(EvsConsts.EVS_DIR, "data.txt");//new File(dataFilePath);
             fileOutputStream = new FileOutputStream(data_file,true);
             fileOutputStream.write(data);
             fileOutputStream.close();
-        }
-        catch (FileNotFoundException e)
-        {
-            e.printStackTrace();
-            return;
-        } catch (IOException e) {
-            e.printStackTrace();
+         }
+         catch (FileNotFoundException e){
+             e.printStackTrace();
+             return;
+         } catch (IOException e) {
+             e.printStackTrace();
         }
     }
+
     private void save_point(double x,double y,double z,double yaw,double pitch,double roll){
         String point = Double.toString(x) + "," + Double.toString(y)+","+Double.toString(z)+","+Double.toString(yaw)+","+Double.toString(pitch)+","+Double.toString(roll)+"\n";
         save_text(point);
     }
+
     /******************************************************************/
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
-        first_launch = true;
-        x_cordinate = new double[10000];
-        y_cordinate = new double[10000];
+        lat_cordinate = new double[10000];
+        lon_cordinate = new double[10000];
         cordinate_pointer = 0;
 
         setContentView(R.layout.activity_main);
@@ -155,7 +132,7 @@ public class MainActivity extends EvsCarouselActivity implements LocationListene
     {
         super.onResume();
         requestLocationPermission();
-        requestCameraPermission();
+        reloadSurfaceView();
         initAROverlayView();
     }
 
@@ -189,6 +166,8 @@ public class MainActivity extends EvsCarouselActivity implements LocationListene
         Location location = mLocationManager.getLastKnownLocation(provider);
         if(location != null)
         {
+            mlocation = mLocationManager.getLastKnownLocation(provider);
+            updateLatestLocation();
             mCxtCenterLable.setText("Lat: " + String.format("%.2f", location.getLatitude()) + ", Lon: " + String.format("%.2f", location.getLongitude()));
         }
 
@@ -197,20 +176,13 @@ public class MainActivity extends EvsCarouselActivity implements LocationListene
         if (mLocationManager != null)  {
             mlocation = mLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
             updateLatestLocation();
-        }else{
-            Location Xlocation = new Location("XARPoint");
-            Xlocation.setLatitude(10);
-            Xlocation.setLongitude(10);
-            Xlocation.setAltitude(10);
-            mlocation = Xlocation;
-            updateLatestLocation();
         }
 
         //init los manager
         mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         mQuaternion = mSensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
         mSensorManager.registerListener(this, mQuaternion, SensorManager.SENSOR_DELAY_FASTEST);
-    }
+}
 
     /******************************************************************/
     @Override
@@ -221,6 +193,7 @@ public class MainActivity extends EvsCarouselActivity implements LocationListene
         if(mLocationManager != null)
         {
             mLocationManager.removeUpdates(this);
+            mSensorManager.unregisterListener(this);
         }
     }
 
@@ -240,16 +213,16 @@ public class MainActivity extends EvsCarouselActivity implements LocationListene
     @Override
     public void onLocationChanged(Location location)
     {
-        double lat = location.getLatitude(),lon = location.getLongitude();
-        double x = Earth_Radius*Math.cos(lat)*Math.cos(lon);
-        double y = Earth_Radius*Math.cos(lat)*Math.sin(lon);
-        double z = Earth_Radius*Math.sin(lat);
-        x_cordinate[cordinate_pointer] = x;
-        y_cordinate[cordinate_pointer] = y;
+        double lat = location.getLatitude();
+        double lon = location.getLongitude();
+        double alt = location.getAltitude();
+
+        lat_cordinate[cordinate_pointer] = lat;
+        lon_cordinate[cordinate_pointer] = lon;
         cordinate_pointer++;
         float[] losAngles = mLosAngles.clone();
-        save_point(x,y,z,Math.toDegrees(losAngles[0]),Math.toDegrees(losAngles[1]),Math.toDegrees(losAngles[2]));
-        mCxtCenterLable.setText(location.getTime() + "\n" + x + "\n" + y);
+        save_point(lat,lon,alt,Math.toDegrees(losAngles[0]),Math.toDegrees(losAngles[1]),Math.toDegrees(losAngles[2]));
+        mCxtCenterLable.setText( lat + "\n" + lon + "\n" +alt );
         Log.e(TAG, "got new location !");
         mlocation = location;
         updateLatestLocation();
@@ -346,17 +319,14 @@ public class MainActivity extends EvsCarouselActivity implements LocationListene
         float[] rotatedProjectionMatrix = new float[16];
 
         SensorManager.getRotationMatrixFromVector(rotationMatrixFromVector, event.values);
-        if (arCamera != null) {
-            projectionMatrix = arCamera.getProjectionMatrix();
 
-        }
         float ratio = (float) arOverlayView.getWidth() / arOverlayView.getHeight();
         final int OFFSET = 0;
         final float LEFT =  -ratio;
         final float RIGHT = ratio;
         final float BOTTOM = -1;
         final float TOP = 1;
-        Matrix.frustumM(projectionMatrix, OFFSET, LEFT, RIGHT, BOTTOM, TOP, 0.5f, 2000);
+        Matrix.frustumM(projectionMatrix, OFFSET, LEFT, RIGHT, BOTTOM, TOP, 0.5f, 1);
         Matrix.multiplyMM(rotatedProjectionMatrix, 0, projectionMatrix, 0, rotationMatrixFromVector, 0);
         this.arOverlayView.updateRotatedProjectionMatrix(rotatedProjectionMatrix);
 
@@ -365,16 +335,6 @@ public class MainActivity extends EvsCarouselActivity implements LocationListene
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
         return;
-    }
-
-
-    public void requestCameraPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
-                this.checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            this.requestPermissions(new String[]{Manifest.permission.CAMERA}, REQUEST_CAMERA_PERMISSIONS_CODE);
-        } else {
-            initARCameraView();
-        }
     }
 
     public void requestLocationPermission() {
@@ -390,21 +350,6 @@ public class MainActivity extends EvsCarouselActivity implements LocationListene
         }
         cameraContainerLayout.addView(arOverlayView);
     }
-
-    public void initARCameraView() {
-        reloadSurfaceView();
-
-        if (arCamera == null) {
-            arCamera = new ARCamera(this, surfaceView);
-        }
-        if (arCamera.getParent() != null) {
-            ((ViewGroup) arCamera.getParent()).removeView(arCamera);
-        }
-        cameraContainerLayout.addView(arCamera);
-        arCamera.setKeepScreenOn(true);
-
-    }
-
 
 
     private void reloadSurfaceView() {

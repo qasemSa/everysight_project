@@ -1,6 +1,8 @@
 package com.example.everysight.myapplication;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -15,9 +17,6 @@ import java.util.List;
 
 import static android.content.ContentValues.TAG;
 
-/**
- * Created by ntdat on 1/13/17.
- */
 
 public class AROverlayView extends View {
 
@@ -34,8 +33,7 @@ public class AROverlayView extends View {
 
         //Demo points
         arPoints = new ArrayList<ARPoint>() {{
-            add(new ARPoint("Sun Wheel", 32.7704856, 35.02562447, 0));
-            add(new ARPoint("Linh Ung Pagoda", 32.770, 35.02543984, 0));
+            add(new ARPoint("Linh Ung Pagoda", 32.775162, 35.024715, 197.82));
         }};
     }
 
@@ -58,7 +56,7 @@ public class AROverlayView extends View {
             return;
         }
 
-        final int radius = 20;
+        float radius = 20;
         Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         paint.setStyle(Paint.Style.FILL);
         paint.setColor(Color.GREEN);
@@ -66,23 +64,33 @@ public class AROverlayView extends View {
         paint.setTextSize(60);
 
         for (int i = 0; i < arPoints.size(); i ++) {
-            float[] currentLocationInECEF = LocationHelper.WSG84toECEF(currentLocation);
-            float[] pointInECEF = LocationHelper.WSG84toECEF(arPoints.get(i).getLocation());
+            float[] currentLocationInECEF = LocationHelper.WSG84toECEF(currentLocation,currentLocation);
+            float distanceToPoint = currentLocation.distanceTo(arPoints.get(i).getLocation());
+            float[] pointInECEF = LocationHelper.WSG84toECEF(arPoints.get(i).getLocation(),currentLocation);
             float[] pointInENU = LocationHelper.ECEFtoENU(currentLocation, currentLocationInECEF, pointInECEF);
 
             float[] cameraCoordinateVector = new float[4];
             Matrix.multiplyMV(cameraCoordinateVector, 0, rotatedProjectionMatrix, 0, pointInENU, 0);
-
+            radius =  60 - distanceToPoint;
             // cameraCoordinateVector[2] is z, that always less than 0 to display on right position
             // if z > 0, the point will display on the opposite
-            if (cameraCoordinateVector[2] < 0) {
-                float x  = (0.5f + cameraCoordinateVector[0]/cameraCoordinateVector[3]) * canvas.getWidth();
-                float y = (0.5f - cameraCoordinateVector[1]/cameraCoordinateVector[3]) * canvas.getHeight();
+            if (cameraCoordinateVector[2] < 0 ){//&& radius > 0) {
+                float x  = (0.5f + (cameraCoordinateVector[0])/cameraCoordinateVector[3]) * this.getWidth() ;
+                float y = (0.5f - cameraCoordinateVector[1]/cameraCoordinateVector[3]) * this.getHeight() ;
+                if (x > this.getWidth()){
+                    Log.e(TAG, "drawing x " + String.valueOf(this.getWidth()));
+                }
+                if (y > this.getHeight()){
+                    Log.e(TAG, "drawing y " + String.valueOf(this.getHeight()));
+                }
                 Log.e(TAG, "drawing points " + String.valueOf(x) + " " + String.valueOf(y));
+                Log.e(TAG, "cameraCoordinateVector " +String.valueOf(cameraCoordinateVector[0])+" "+String.valueOf(cameraCoordinateVector[1])+" "+String.valueOf(cameraCoordinateVector[2])+" "+String.valueOf(cameraCoordinateVector[3])+" ");
                 Log.e(TAG, "rotatedProjectionMatrix " +String.valueOf(rotatedProjectionMatrix[0])+" "+String.valueOf(rotatedProjectionMatrix[1])+" "+String.valueOf(rotatedProjectionMatrix[2])+" "+String.valueOf(rotatedProjectionMatrix[3])+" ");
                 Log.e(TAG, "pointInENU " +String.valueOf(pointInENU[0])+" "+String.valueOf(pointInENU[1])+" "+String.valueOf(pointInENU[2])+" "+String.valueOf(pointInENU[3])+" ");
-                canvas.drawCircle(x, y, radius, paint);
-                canvas.drawText(arPoints.get(i).getName(), x - (30 * arPoints.get(i).getName().length() / 2), y - 80, paint);
+                Bitmap arrow_pic = BitmapFactory.decodeResource(getResources(),R.drawable.arrow_32);
+                canvas.drawBitmap(arrow_pic,x,y,null);
+                //canvas.drawCircle(x, y, radius, paint);
+                //canvas.drawText(arPoints.get(i).getName(), x - (30 * arPoints.get(i).getName().length() / 2), y - 80, paint);
             }
         }
     }
