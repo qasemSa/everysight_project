@@ -1,42 +1,55 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/activity_main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@android:color/black">
+    tools:context="com.example.everysight.myapplication.MainActivity"
+    >
+
+    <FrameLayout
+        android:id="@+id/camera_container_layout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        >
+
+        <SurfaceView
+            android:id="@+id/surface_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            />
+
+    </FrameLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        >
+
         <TextView
             android:id="@+id/centerLabel"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
-            android:gravity="center_horizontal|top"
             android:layout_marginTop="30dp"
+            android:gravity="center_horizontal|top"
             android:text="No location yet!"
-            android:textColor="@color/evsGreen"
-            android:textAppearance="@android:style/TextAppearance.DeviceDefault.Large"/>
+            android:textAppearance="@android:style/TextAppearance.DeviceDefault.Large"
+            android:textColor="@color/evsGreen" />
+
         <TextView
             android:id="@+id/menuLabel"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textColor="@color/evsWhite"
             android:layout_gravity="center"
-            android:gravity="center_horizontal|top"
-            android:textSize="15sp"
             android:layout_marginTop="5dp"
-            android:text="Tap to open menu"/>
+            android:gravity="center_horizontal|top"
+            android:text="Press to start GPS"
+            android:textColor="@color/evsWhite"
+            android:textSize="20sp" />
     </LinearLayout>
 
-    <RelativeLayout
-        android:id="@+id/SelectSettingsCarousel"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:gravity="center">
-    </RelativeLayout>
 
-
-</RelativeLayout>
+</FrameLayout>
 
