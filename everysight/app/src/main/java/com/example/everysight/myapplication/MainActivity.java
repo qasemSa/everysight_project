@@ -315,10 +315,29 @@ public class MainActivity extends EvsCarouselActivity implements LocationListene
 
 
         float[] rotationMatrixFromVector = new float[16];
+        float[] rotationMatrixFromVector_fixed  = new float[16];
+        float[] rotationMatrixTeta  = new float[16];
         float[] projectionMatrix = new float[16];
         float[] rotatedProjectionMatrix = new float[16];
-
+        float teta = (float) Math.toRadians(80);
+        rotationMatrixTeta[0] = 1;//(float) Math.cos(teta);
+        rotationMatrixTeta[1] = 0;
+        rotationMatrixTeta[2] = 0;//(float) Math.sin(teta);
+        rotationMatrixTeta[3] = 0;
+        rotationMatrixTeta[4] = 0;
+        rotationMatrixTeta[5] = (float) Math.cos(teta);//1;
+        rotationMatrixTeta[6] = (float) -Math.sin(teta);//0;
+        rotationMatrixTeta[7] = 0;
+        rotationMatrixTeta[8] = 0;//(float) -Math.sin(teta);
+        rotationMatrixTeta[9] = (float) Math.sin(teta);//0;
+        rotationMatrixTeta[10] = (float) Math.cos(teta);
+        rotationMatrixTeta[11] = 0;
+        rotationMatrixTeta[12] = 0;
+        rotationMatrixTeta[13] = 0;
+        rotationMatrixTeta[14] = 0;
+        rotationMatrixTeta[15] = 1;
         SensorManager.getRotationMatrixFromVector(rotationMatrixFromVector, event.values);
+        Matrix.multiplyMM(rotationMatrixFromVector_fixed, 0, rotationMatrixTeta, 0, rotationMatrixFromVector, 0);
 
         float ratio = (float) arOverlayView.getWidth() / arOverlayView.getHeight();
         final int OFFSET = 0;
@@ -326,10 +345,9 @@ public class MainActivity extends EvsCarouselActivity implements LocationListene
         final float RIGHT = ratio;
         final float BOTTOM = -1;
         final float TOP = 1;
-        Matrix.frustumM(projectionMatrix, OFFSET, LEFT, RIGHT, BOTTOM, TOP, 0.5f, 1);
-        Matrix.multiplyMM(rotatedProjectionMatrix, 0, projectionMatrix, 0, rotationMatrixFromVector, 0);
+        Matrix.frustumM(projectionMatrix, OFFSET, LEFT, RIGHT, BOTTOM, TOP, 0.5f, 2000);
+        Matrix.multiplyMM(rotatedProjectionMatrix, 0, projectionMatrix, 0, rotationMatrixFromVector_fixed, 0);
         this.arOverlayView.updateRotatedProjectionMatrix(rotatedProjectionMatrix);
-
     }
 
     @Override

@@ -32,10 +32,10 @@ public class LocationHelper {
         float slat = (float)Math.sin(radLat);
         float clon = (float)Math.cos(radLon);
         float slon = (float)Math.sin(radLon);
-
-        float dx = ecefCurrentLocation[0] - ecefPOI[0];
-        float dy = ecefCurrentLocation[1] - ecefPOI[1];
-        float dz = ecefCurrentLocation[2] - ecefPOI[2];
+ //TODO check if correct
+        float dx = -1*(ecefCurrentLocation[0] - ecefPOI[0]);
+        float dy = -1*(ecefCurrentLocation[1] - ecefPOI[1]);
+        float dz = -1*(ecefCurrentLocation[2] - ecefPOI[2]);
 
         float east = -slon*dx + clon*dy;
 

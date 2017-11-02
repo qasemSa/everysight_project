@@ -33,7 +33,7 @@ public class AROverlayView extends View {
 
         //Demo points
         arPoints = new ArrayList<ARPoint>() {{
-            add(new ARPoint("Linh Ung Pagoda", 32.775162, 35.024715, 197.82));
+            add(new ARPoint("Linh Ung Pagoda", 32.777371, 35.023160, 0));
         }};
     }
 
@@ -52,23 +52,28 @@ public class AROverlayView extends View {
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
 
-        if (currentLocation == null) {
-            return;
-        }
-
         float radius = 20;
         Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         paint.setStyle(Paint.Style.FILL);
-        paint.setColor(Color.GREEN);
-        paint.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.NORMAL));
-        paint.setTextSize(60);
-
+        paint.setColor(Color.YELLOW);
+        paint.setTypeface(Typeface.create(Typeface.SERIF, Typeface.BOLD));
+        paint.setTextSize(55);
+        int speed = 56;//
+        if (currentLocation == null) {
+            canvas.drawText(Integer.toString(speed),this.getWidth()*0.5f,this.getHeight()-30,paint);
+            paint.setTextSize(25);
+            canvas.drawText("km/h",this.getWidth()*0.5f,this.getHeight(),paint);
+            return;
+        }
+        speed = (int) Math.round(currentLocation.getSpeed()*3.6);
+        canvas.drawText(Integer.toString(speed),this.getWidth()*0.5f,this.getHeight()-30,paint);
+        paint.setTextSize(25);
+        canvas.drawText("km/h",this.getWidth()*0.5f,this.getHeight(),paint);
         for (int i = 0; i < arPoints.size(); i ++) {
             float[] currentLocationInECEF = LocationHelper.WSG84toECEF(currentLocation,currentLocation);
             float distanceToPoint = currentLocation.distanceTo(arPoints.get(i).getLocation());
             float[] pointInECEF = LocationHelper.WSG84toECEF(arPoints.get(i).getLocation(),currentLocation);
             float[] pointInENU = LocationHelper.ECEFtoENU(currentLocation, currentLocationInECEF, pointInECEF);
-
             float[] cameraCoordinateVector = new float[4];
             Matrix.multiplyMV(cameraCoordinateVector, 0, rotatedProjectionMatrix, 0, pointInENU, 0);
             radius =  60 - distanceToPoint;
