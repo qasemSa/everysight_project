@@ -213,9 +213,10 @@ public class MainActivity extends EvsCarouselActivity implements LocationListene
     @Override
     public void onLocationChanged(Location location)
     {
-        double lat = location.getLatitude();
-        double lon = location.getLongitude();
-        double alt = location.getAltitude();
+        mlocation = location;
+        double lat = mlocation.getLatitude();
+        double lon = mlocation.getLongitude();
+        double alt = mlocation.getAltitude();
 
         lat_cordinate[cordinate_pointer] = lat;
         lon_cordinate[cordinate_pointer] = lon;
@@ -224,7 +225,6 @@ public class MainActivity extends EvsCarouselActivity implements LocationListene
         save_point(lat,lon,alt,Math.toDegrees(losAngles[0]),Math.toDegrees(losAngles[1]),Math.toDegrees(losAngles[2]));
         mCxtCenterLable.setText( lat + "\n" + lon + "\n" +alt );
         Log.e(TAG, "got new location !");
-        mlocation = location;
         updateLatestLocation();
     }
 
@@ -312,14 +312,41 @@ public class MainActivity extends EvsCarouselActivity implements LocationListene
 
         float[] quaternion = event.values.clone();//Quarernion is [x,y,z,w]
         mLosAngles = SensorOrientationUtils.QuaternionToAngles(quaternion);
+        Log.e(TAG, "mLosAngles " +String.valueOf((float) Math.toDegrees(mLosAngles[0]))+" "+String.valueOf((float) Math.toDegrees(mLosAngles[1]))+" "+String.valueOf((float) Math.toDegrees(mLosAngles[2])));
 
+        float yaw =  (float) Math.toDegrees(mLosAngles[0]);
+        float pitch = (float) Math.toDegrees(mLosAngles[1]);
+        float roll =  (float) Math.toDegrees(mLosAngles[2]);
+
+        float[] rotationMatrixFromAnglesX =  new float[16];
+        Matrix.setRotateM(rotationMatrixFromAnglesX,0,-pitch,1,0,0);
+
+        float[] rotationMatrixFromAnglesY =  new float[16];
+        Matrix.setRotateM(rotationMatrixFromAnglesY,0,yaw,0,1,0);
+
+        float[] rotationMatrixFromAnglesZ =  new float[16];
+        Matrix.setRotateM(rotationMatrixFromAnglesZ,0,roll,0,0,1);
+
+        float[] rotationMatrixFromAngles =  new float[16];
+        Matrix.setRotateEulerM(rotationMatrixFromAngles,0,(float) Math.toDegrees(mLosAngles[1]),(float) Math.toDegrees(mLosAngles[2]),(float) Math.toDegrees(mLosAngles[0]));
+        Log.e(TAG, "rotationMatrixFromAngles " +String.valueOf(rotationMatrixFromAngles[0])+" "+String.valueOf(rotationMatrixFromAngles[1])+" "+String.valueOf(rotationMatrixFromAngles[2])+" "+String.valueOf(rotationMatrixFromAngles[3])+" ");
+        Log.e(TAG, "rotationMatrixFromAngles " +String.valueOf(rotationMatrixFromAngles[4])+" "+String.valueOf(rotationMatrixFromAngles[5])+" "+String.valueOf(rotationMatrixFromAngles[6])+" "+String.valueOf(rotationMatrixFromAngles[7])+" ");
+        Log.e(TAG, "rotationMatrixFromAngles " +String.valueOf(rotationMatrixFromAngles[8])+" "+String.valueOf(rotationMatrixFromAngles[9])+" "+String.valueOf(rotationMatrixFromAngles[10])+" "+String.valueOf(rotationMatrixFromAngles[11])+" ");
+        Log.e(TAG, "rotationMatrixFromAngles " +String.valueOf(rotationMatrixFromAngles[12])+" "+String.valueOf(rotationMatrixFromAngles[13])+" "+String.valueOf(rotationMatrixFromAngles[14])+" "+String.valueOf(rotationMatrixFromAngles[15])+" ");
 
         float[] rotationMatrixFromVector = new float[16];
         float[] rotationMatrixFromVector_fixed  = new float[16];
         float[] rotationMatrixTeta  = new float[16];
         float[] projectionMatrix = new float[16];
         float[] rotatedProjectionMatrix = new float[16];
-        float teta = (float) Math.toRadians(80);
+        SensorManager.getRotationMatrixFromVector(rotationMatrixFromVector, event.values);
+        Log.e(TAG, "rotationMatrixFromVector " +String.valueOf(rotationMatrixFromVector[0])+" "+String.valueOf(rotationMatrixFromVector[1])+" "+String.valueOf(rotationMatrixFromVector[2])+" "+String.valueOf(rotationMatrixFromVector[3])+" ");
+        Log.e(TAG, "rotationMatrixFromVector " +String.valueOf(rotationMatrixFromVector[4])+" "+String.valueOf(rotationMatrixFromVector[5])+" "+String.valueOf(rotationMatrixFromVector[6])+" "+String.valueOf(rotationMatrixFromVector[7])+" ");
+        Log.e(TAG, "rotationMatrixFromVector " +String.valueOf(rotationMatrixFromVector[8])+" "+String.valueOf(rotationMatrixFromVector[9])+" "+String.valueOf(rotationMatrixFromVector[10])+" "+String.valueOf(rotationMatrixFromVector[11])+" ");
+        Log.e(TAG, "rotationMatrixFromVector " +String.valueOf(rotationMatrixFromVector[12])+" "+String.valueOf(rotationMatrixFromVector[13])+" "+String.valueOf(rotationMatrixFromVector[14])+" "+String.valueOf(rotationMatrixFromVector[15])+" ");
+
+        // x-axis
+        /*float teta = (float) Math.toRadians(0);
         rotationMatrixTeta[0] = 1;//(float) Math.cos(teta);
         rotationMatrixTeta[1] = 0;
         rotationMatrixTeta[2] = 0;//(float) Math.sin(teta);
@@ -336,17 +363,41 @@ public class MainActivity extends EvsCarouselActivity implements LocationListene
         rotationMatrixTeta[13] = 0;
         rotationMatrixTeta[14] = 0;
         rotationMatrixTeta[15] = 1;
-        SensorManager.getRotationMatrixFromVector(rotationMatrixFromVector, event.values);
         Matrix.multiplyMM(rotationMatrixFromVector_fixed, 0, rotationMatrixTeta, 0, rotationMatrixFromVector, 0);
 
-        float ratio = (float) arOverlayView.getWidth() / arOverlayView.getHeight();
+        //y-axis
+        float teta = (float) Math.toRadians(80);
+        rotationMatrixTeta[0] = (float) Math.cos(teta);
+        rotationMatrixTeta[1] = 0;
+        rotationMatrixTeta[2] = (float) Math.sin(teta);
+        rotationMatrixTeta[3] = 0;
+        rotationMatrixTeta[4] = 0;
+        rotationMatrixTeta[5] = 1;
+        rotationMatrixTeta[6] = 0;
+        rotationMatrixTeta[7] = 0;
+        rotationMatrixTeta[8] = (float) -Math.sin(teta);
+        rotationMatrixTeta[9] = 0;
+        rotationMatrixTeta[10] = (float) Math.cos(teta);
+        rotationMatrixTeta[11] = 0;
+        rotationMatrixTeta[12] = 0;
+        rotationMatrixTeta[13] = 0;
+        rotationMatrixTeta[14] = 0;
+        rotationMatrixTeta[15] = 1;
+        Matrix.multiplyMM(rotationMatrixFromVector_fixed, 0, rotationMatrixTeta, 0, rotationMatrixFromVector, 0);
+*/
+        //float ratio = (float) arOverlayView.getWidth() / arOverlayView.getHeight();
+        float ratio = (float) (640.0/480.0);
         final int OFFSET = 0;
         final float LEFT =  -ratio;
         final float RIGHT = ratio;
         final float BOTTOM = -1;
         final float TOP = 1;
-        Matrix.frustumM(projectionMatrix, OFFSET, LEFT, RIGHT, BOTTOM, TOP, 0.5f, 2000);
-        Matrix.multiplyMM(rotatedProjectionMatrix, 0, projectionMatrix, 0, rotationMatrixFromVector_fixed, 0);
+        Matrix.frustumM(projectionMatrix, OFFSET, -LEFT, -RIGHT, BOTTOM, TOP, 0.5f, 2000);
+        //Matrix.perspectiveM(projectionMatrix,0,120 ,ratio,0.5f,2000);
+        //Matrix.setIdentityM(rotationMatrixFromVector,0);
+        //Matrix.setRotateM(rotationMatrixFromVector,)
+        //Matrix.multiplyMM(rotatedProjectionMatrix, 0, projectionMatrix, 0, rotationMatrixFromAngles, 0);
+        Matrix.multiplyMM(rotatedProjectionMatrix, 0, rotationMatrixFromAnglesX, 0, rotationMatrixFromAnglesY, 0);
         this.arOverlayView.updateRotatedProjectionMatrix(rotatedProjectionMatrix);
     }
 

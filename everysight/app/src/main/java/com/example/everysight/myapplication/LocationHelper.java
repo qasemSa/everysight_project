@@ -6,7 +6,7 @@ public class LocationHelper {
     private final static double WGS84_A = 6378137.0;                  // WGS 84 semi-major axis constant in meters
     private final static double WGS84_E2 = 0.00669437999014;          // square of WGS 84 eccentricity
 
-    public static float[] WSG84toECEF(Location location,Location currentLocation) {
+    public static float[] WSG84toECEF(Location location) {
         double radLat = Math.toRadians(location.getLatitude());
         double radLon = Math.toRadians(location.getLongitude());
 
@@ -17,9 +17,9 @@ public class LocationHelper {
 
         float N = (float) (WGS84_A / Math.sqrt(1.0 - WGS84_E2 * slat * slat));
 
-        float x = (float) ((N + currentLocation.getAltitude()) * clat * clon);
-        float y = (float) ((N + currentLocation.getAltitude()) * clat * slon);
-        float z = (float) ((N * (1.0 - WGS84_E2) + currentLocation.getAltitude()) * slat);
+        float x = (float) ((N + location.getAltitude()) * clat * clon);
+        float y = (float) ((N + location.getAltitude()) * clat * slon);
+        float z = (float) ((N * (1.0 - WGS84_E2) + location.getAltitude()) * slat);
 
         return new float[] {x , y, z};
     }
@@ -33,9 +33,9 @@ public class LocationHelper {
         float clon = (float)Math.cos(radLon);
         float slon = (float)Math.sin(radLon);
  //TODO check if correct
-        float dx = -1*(ecefCurrentLocation[0] - ecefPOI[0]);
-        float dy = -1*(ecefCurrentLocation[1] - ecefPOI[1]);
-        float dz = -1*(ecefCurrentLocation[2] - ecefPOI[2]);
+        float dx = (ecefCurrentLocation[0] - ecefPOI[0]);
+        float dy = (ecefCurrentLocation[1] - ecefPOI[1]);
+        float dz = (ecefCurrentLocation[2] - ecefPOI[2]);
 
         float east = -slon*dx + clon*dy;
 
@@ -43,6 +43,7 @@ public class LocationHelper {
 
         float up = clat*clon*dx + clat*slon*dy + slat*dz;
 
-        return new float[] {east , north, up, 1};
+        //return new float[] {east , north, up, 1};
+        return new float[]{5,0,0,1};
     }
 }
