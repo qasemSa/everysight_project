@@ -31,10 +31,14 @@ public class AROverlayView extends View {
 
         //Demo points
         arPoints = new ArrayList<ARPoint>() {{
-            add(new ARPoint("ulman", 32.776864, 35.023367, 0));
-            add(new ARPoint("", 32.780176, 35.018882, 0));
+            add(new ARPoint("ulman", 32.776864, 35.023367, 226.5762,false));
+            add(new ARPoint("try2", 32.775755, 35.02465, 220,false));
+            add(new ARPoint("try1", 32.77588319, 35.02449852, 216,false));
+
+            add(new ARPoint("x", 7, 0, 0,true));
+            add(new ARPoint("y", 0, 7, 0,true));
+            add(new ARPoint("z", 0, 0, 7,true));
         }};
-        currentLocation = new Location("dd");
     }
 
     public void updateRotatedProjectionMatrix(float[] rotatedProjectionMatrix) {
@@ -63,9 +67,8 @@ public class AROverlayView extends View {
             canvas.drawText(Integer.toString(speed),this.getWidth()*0.5f,this.getHeight()-30,paint);
             paint.setTextSize(25);
             canvas.drawText("km/h",this.getWidth()*0.5f,this.getHeight(),paint);
-            //return;
+            currentLocation = arPoints.get(0).getLocation();
         }
-        currentLocation = new Location("dd");
         speed = (int) Math.round(currentLocation.getSpeed()*3.6);
         canvas.drawText(Integer.toString(speed),this.getWidth()*0.5f,this.getHeight()-30,paint);
         paint.setTextSize(25);
@@ -74,7 +77,7 @@ public class AROverlayView extends View {
             float[] currentLocationInECEF = LocationHelper.WSG84toECEF(currentLocation);
             float distanceToPoint = currentLocation.distanceTo(arPoints.get(i).getLocation());
             float[] pointInECEF = LocationHelper.WSG84toECEF(arPoints.get(i).getLocation());
-            float[] pointInENU = LocationHelper.ECEFtoENU(currentLocation, currentLocationInECEF, pointInECEF);
+            float[] pointInENU = arPoints.get(i).pointInENU(currentLocation, currentLocationInECEF);
 
             float[] cameraCoordinateVector = new float[4];
             Matrix.multiplyMV(cameraCoordinateVector, 0, rotatedProjectionMatrix, 0, pointInENU, 0);
@@ -96,6 +99,11 @@ public class AROverlayView extends View {
                 Log.e(TAG, "pointInENU " +String.valueOf(pointInENU[0])+" "+String.valueOf(pointInENU[1])+" "+String.valueOf(pointInENU[2])+" "+String.valueOf(pointInENU[3])+" ");
                 //Bitmap arrow_pic = BitmapFactory.decodeResource(getResources(),R.drawable.arrow_32);
                 //canvas.drawBitmap(arrow_pic,x,y,null);
+                if(distanceToPoint>=4) {
+                    radius = (4 / distanceToPoint) * 50;
+                }else{
+                    radius = 50;
+                }
                 canvas.drawCircle(x, y, radius, paint);
                 canvas.drawText(arPoints.get(i).getName(), x - (30 * arPoints.get(i).getName().length() / 2), y - 80, paint);
             }

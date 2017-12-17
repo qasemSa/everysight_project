@@ -23,16 +23,38 @@ public class LocationHelper {
 
         return new float[] {x , y, z};
     }
+    public static float[] tmpWSG84toECEF(Location location) {
+        double radLat = Math.toRadians(location.getLatitude());
+        double radLon = Math.toRadians(location.getLongitude());
 
+        radLat = Math.toRadians(32.77601);
+        radLon = Math.toRadians(35.024576);
+        double alt = 226.766;
+        float clat = (float) Math.cos(radLat);
+        float slat = (float) Math.sin(radLat);
+        float clon = (float) Math.cos(radLon);
+        float slon = (float) Math.sin(radLon);
+
+        float N = (float) (WGS84_A / Math.sqrt(1.0 - WGS84_E2 * slat * slat));
+
+        float x = (float) ((N + alt) * clat * clon);
+        float y = (float) ((N + alt) * clat * slon);
+        float z = (float) ((N * (1.0 - WGS84_E2) + alt) * slat);
+
+        return new float[] {x , y, z};
+    }
     public static float[] ECEFtoENU(Location currentLocation, float[] ecefCurrentLocation, float[] ecefPOI) {
         double radLat = Math.toRadians(currentLocation.getLatitude());
         double radLon = Math.toRadians(currentLocation.getLongitude());
+
+        //radLat = Math.toRadians(32.77601);
+        //radLon = Math.toRadians(35.024576);
 
         float clat = (float)Math.cos(radLat);
         float slat = (float)Math.sin(radLat);
         float clon = (float)Math.cos(radLon);
         float slon = (float)Math.sin(radLon);
- //TODO check if correct
+
         float dx = (ecefCurrentLocation[0] - ecefPOI[0]);
         float dy = (ecefCurrentLocation[1] - ecefPOI[1]);
         float dz = (ecefCurrentLocation[2] - ecefPOI[2]);
@@ -43,7 +65,11 @@ public class LocationHelper {
 
         float up = clat*clon*dx + clat*slon*dy + slat*dz;
 
-        //return new float[] {east , north, up, 1};
-        return new float[]{5,0,0,1};
+        //first is +east
+        //second is up
+        //third coordinate is -north
+
+        return new float[] {east , up, -north, 1};
+      //  return new float[]{0,-5,0,1};
     }
 }
