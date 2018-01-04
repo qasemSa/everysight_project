@@ -67,7 +67,7 @@ public class MainActivity extends EvsCarouselActivity implements LocationListene
     private SensorManager mSensorManager;
     private Sensor mQuaternion;
 
-    private float[] mLosAngles = null;
+    public static float[] mLosAngles = null;
 
     private void save_text(String str){
         byte[] data = str.getBytes();
@@ -272,11 +272,11 @@ public class MainActivity extends EvsCarouselActivity implements LocationListene
             {
                 mLocationManager.removeUpdates(this);
             }
-            if(mSensorManager != null) {
+            /*if(mSensorManager != null) {
                 mSensorManager.unregisterListener(this);
                 mQuaternion = mSensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
                 mLosAngles = null;
-            }
+            }*/
             cordinate_pointer = 0;
         }
         first_launch = !first_launch;

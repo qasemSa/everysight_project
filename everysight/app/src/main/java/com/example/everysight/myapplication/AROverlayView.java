@@ -10,7 +10,11 @@ import android.opengl.Matrix;
 import android.util.Log;
 import android.view.View;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 
 import static android.content.ContentValues.TAG;
@@ -22,7 +26,7 @@ public class AROverlayView extends View {
     private float[] rotatedProjectionMatrix = new float[16];
     private Location currentLocation;
     private List<ARPoint> arPoints;
-
+    public static LosAnglesActivity angles;
 
     public AROverlayView(Context context) {
         super(context);
@@ -34,11 +38,15 @@ public class AROverlayView extends View {
             add(new ARPoint("ulman", 32.776864, 35.023367, 226.5762,false));
             add(new ARPoint("try2", 32.775755, 35.02465, 220,false));
             add(new ARPoint("try1", 32.77588319, 35.02449852, 216,false));
+            add(new ARPoint("try3", 32.7775962, 35.0219172, 228,false));
 
             add(new ARPoint("x", 7, 0, 0,true));
             add(new ARPoint("y", 0, 7, 0,true));
             add(new ARPoint("z", 0, 0, 7,true));
         }};
+
+        angles = new LosAnglesActivity();
+        angles.start();
     }
 
     public void updateRotatedProjectionMatrix(float[] rotatedProjectionMatrix) {
@@ -100,13 +108,35 @@ public class AROverlayView extends View {
                 //Bitmap arrow_pic = BitmapFactory.decodeResource(getResources(),R.drawable.arrow_32);
                 //canvas.drawBitmap(arrow_pic,x,y,null);
                 if(distanceToPoint>=4) {
-                    radius = (4 / distanceToPoint) * 50;
+                    radius = Math.max((4 / distanceToPoint) * 50,10);
                 }else{
                     radius = 50;
                 }
                 canvas.drawCircle(x, y, radius, paint);
                 canvas.drawText(arPoints.get(i).getName(), x - (30 * arPoints.get(i).getName().length() / 2), y - 80, paint);
             }
+        }
+        boolean[] headMovement = angles.headMovement();
+        paint.setTextSize(40);
+        Calendar cal = Calendar.getInstance();
+        Date date = cal.getTime();
+        DateFormat timeFormat = new SimpleDateFormat("HH:mm:ss");
+        DateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy");
+        String formattedTime = timeFormat.format(date);
+        String formattedDate = dateFormat.format(date);
+        paint.setTextSize(25);
+        canvas.drawText("yawDiff = "+String.valueOf(angles.anglesDiff[0])+" pitchDiff = "+String.valueOf(angles.anglesDiff[1]),this.getWidth()*0.25f,this.getHeight()*0.75f,paint);
+        if(headMovement[0]){
+            canvas.drawText(formattedTime,this.getWidth()*0.5f-50,this.getHeight()*0.5f,paint);
+        }
+        if(headMovement[1]){
+            canvas.drawText(formattedDate,this.getWidth()*0.5f-80,this.getHeight()*0.5f,paint);
+        }
+        if(headMovement[2]){
+            canvas.drawText("UP",this.getWidth()*0.5f,this.getHeight()*0.5f,paint);
+        }
+        if(headMovement[3]){
+            canvas.drawText("DOWN",this.getWidth()*0.5f,this.getHeight()*0.5f,paint);
         }
     }
 }
