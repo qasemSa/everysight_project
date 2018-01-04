@@ -75,7 +75,6 @@ public class MainActivity extends EvsCarouselActivity implements LocationListene
         {
             return;
         }
-
         FileOutputStream fileOutputStream = null;
          try{
             File data_file = new File(EvsConsts.EVS_DIR, "data.txt");//new File(dataFilePath);
@@ -386,8 +385,8 @@ public class MainActivity extends EvsCarouselActivity implements LocationListene
         rotationMatrixTeta[15] = 1;
         Matrix.multiplyMM(rotationMatrixFromVector_fixed, 0, rotationMatrixTeta, 0, rotationMatrixFromVector, 0);
 */
-        //float ratio = (float) arOverlayView.getWidth() / arOverlayView.getHeight();
-        float ratio = (float) (640.0/480.0);
+        float ratio = (float) arOverlayView.getWidth() / arOverlayView.getHeight();
+        //float ratio = (float) (640.0/480.0);
         final int OFFSET = 0;
         final float LEFT =  -ratio;
         final float RIGHT = ratio;

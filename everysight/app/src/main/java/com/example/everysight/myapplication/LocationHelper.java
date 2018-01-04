@@ -23,26 +23,7 @@ public class LocationHelper {
 
         return new float[] {x , y, z};
     }
-    public static float[] tmpWSG84toECEF(Location location) {
-        double radLat = Math.toRadians(location.getLatitude());
-        double radLon = Math.toRadians(location.getLongitude());
 
-        radLat = Math.toRadians(32.77601);
-        radLon = Math.toRadians(35.024576);
-        double alt = 226.766;
-        float clat = (float) Math.cos(radLat);
-        float slat = (float) Math.sin(radLat);
-        float clon = (float) Math.cos(radLon);
-        float slon = (float) Math.sin(radLon);
-
-        float N = (float) (WGS84_A / Math.sqrt(1.0 - WGS84_E2 * slat * slat));
-
-        float x = (float) ((N + alt) * clat * clon);
-        float y = (float) ((N + alt) * clat * slon);
-        float z = (float) ((N * (1.0 - WGS84_E2) + alt) * slat);
-
-        return new float[] {x , y, z};
-    }
     public static float[] ECEFtoENU(Location currentLocation, float[] ecefCurrentLocation, float[] ecefPOI) {
         double radLat = Math.toRadians(currentLocation.getLatitude());
         double radLon = Math.toRadians(currentLocation.getLongitude());

@@ -93,8 +93,8 @@ public class AROverlayView extends View {
             // cameraCoordinateVector[2] is z, that always less than 0 to display on right position
             // if z > 0, the point will display on the opposite
             if (cameraCoordinateVector[2] < 0 ){//&& radius > 0) {
-                float x  = (0.5f + (cameraCoordinateVector[0])/cameraCoordinateVector[3]) * 640 ;
-                float y = (0.5f - cameraCoordinateVector[1]/cameraCoordinateVector[3]) * 480 ;
+                float x  = (0.5f + (cameraCoordinateVector[0])/cameraCoordinateVector[3]) * this.getWidth() ;
+                float y = (0.5f - cameraCoordinateVector[1]/cameraCoordinateVector[3]) * this.getHeight() ;
                 if (x > this.getWidth()){
                     Log.e(TAG, "drawing x " + String.valueOf(this.getWidth()));
                 }
@@ -117,15 +117,16 @@ public class AROverlayView extends View {
             }
         }
         boolean[] headMovement = angles.headMovement();
-        paint.setTextSize(40);
+
+        paint.setTextSize(20);
         Calendar cal = Calendar.getInstance();
         Date date = cal.getTime();
         DateFormat timeFormat = new SimpleDateFormat("HH:mm:ss");
         DateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy");
         String formattedTime = timeFormat.format(date);
         String formattedDate = dateFormat.format(date);
-        paint.setTextSize(25);
-        canvas.drawText("yawDiff = "+String.valueOf(angles.anglesDiff[0])+" pitchDiff = "+String.valueOf(angles.anglesDiff[1]),this.getWidth()*0.25f,this.getHeight()*0.75f,paint);
+        canvas.drawText("yawDiff = "+String.valueOf(angles.anglesDiff[0])+" pitchDiff = "+String.valueOf(angles.anglesDiff[1]),this.getWidth()*0.3f,this.getHeight()*0.75f,paint);
+
         if(headMovement[0]){
             canvas.drawText(formattedTime,this.getWidth()*0.5f-50,this.getHeight()*0.5f,paint);
         }
@@ -136,7 +137,8 @@ public class AROverlayView extends View {
             canvas.drawText("UP",this.getWidth()*0.5f,this.getHeight()*0.5f,paint);
         }
         if(headMovement[3]){
-            canvas.drawText("DOWN",this.getWidth()*0.5f,this.getHeight()*0.5f,paint);
+
+            canvas.drawText("DOWN",this.getWidth()*0.5f-10,this.getHeight()*0.5f,paint);
         }
     }
 }
