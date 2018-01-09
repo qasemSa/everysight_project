@@ -25,7 +25,10 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 
@@ -33,6 +36,8 @@ public class AROverlayView extends View implements LocationListener,SensorEventL
     private final String TAG = "AROverlayView";
     Context context;
 
+    LocationManager mLocationManager = null;
+    SensorManager mSensorManager = null;
     public static float[] lastKnownAngles;
     private static HeadMovementsActivity angles;
 
@@ -70,6 +75,15 @@ public class AROverlayView extends View implements LocationListener,SensorEventL
         angles = new HeadMovementsActivity();
         angles.start();
     }
+    public void AROverlayDestroy() {
+        if(mLocationManager != null) {
+            mLocationManager.removeUpdates(this);
+        }
+        if(mSensorManager != null) {
+            mSensorManager.unregisterListener(this);
+        }
+    }
+
     public void addGeoARPoint(GeoARPoint p){
         geoPointsList.add(p);
     }
@@ -79,8 +93,29 @@ public class AROverlayView extends View implements LocationListener,SensorEventL
     public void setLogEnable(boolean flag){
         logEnable = flag;
         if(flag){
-            save_text("GPS data\n");
-            save_text("Lat       Lon        Alt         Yaw         Pitch       Roll\n");
+            File data_file1 = new File(EvsConsts.EVS_DIR, "GPS_data.txt");
+            File data_file2 = new File(EvsConsts.EVS_DIR, "Rotation_data.txt");
+            if(data_file1.exists()){
+                data_file1.delete();
+                try {
+                    data_file1.createNewFile();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            if(data_file2.exists()){
+                data_file2.delete();
+                try {
+                    data_file2.createNewFile();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            save_text_gps("GPS data\n");
+            save_text_gps("Lat   ,    Lon    ,    Alt     ,    Yaw    ,     Pitch   ,    Roll    ,   timeStamp\n");
+            save_text_rotation("Rotation Sensor data\n");
+            save_text_rotation("Lat   ,    Lon    ,    Alt    ,     Yaw    ,     Pitch    ,   Roll    ,  timeStamp\n");
+
         }
     }
     private void initProjectionMatrix() {
@@ -90,10 +125,10 @@ public class AROverlayView extends View implements LocationListener,SensorEventL
         final float RIGHT = ratio;
         final float BOTTOM = -1;
         final float TOP = 1;
-        Matrix.frustumM(projectionMatrix, OFFSET, LEFT, RIGHT, BOTTOM, TOP, 5, 2000);
+        Matrix.frustumM(projectionMatrix, OFFSET, LEFT, RIGHT, BOTTOM, TOP, 6, 500);
     }
     private void initGps() {
-        LocationManager mLocationManager = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
+        mLocationManager = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
         if (mLocationManager == null) {
             Log.e(TAG, "No GPS LocationManager is available");
             return;
@@ -142,7 +177,16 @@ public class AROverlayView extends View implements LocationListener,SensorEventL
             lastKnownAngles[i] = (float) Math.toDegrees(anglesInRadians[i]);
         }
         upadteRotatedProjectionMatrix();
-
+        if(logEnable) {
+            DateFormat format = new SimpleDateFormat("HH:mm:ss.SSS");
+            long timeInMillis = (new Date()).getTime()
+                    + (event.timestamp - System.nanoTime()) / 1000000L;
+            Date date = new Date(timeInMillis);
+            String formatted = format.format(date);
+            String point = Double.toString(lastKnownLocation.getLatitude()) + "," + Double.toString(lastKnownLocation.getLongitude())+","+Double.toString(lastKnownLocation.getAltitude())+","+Double.toString(lastKnownAngles[0])+","+Double.toString(lastKnownAngles[1])+","+Double.toString(lastKnownAngles[1])+ "," + formatted +"\n";
+            save_text_rotation(point);
+            Log.e(TAG, "save sensor data");
+        }
         this.invalidate();
     }
 
@@ -167,7 +211,8 @@ public class AROverlayView extends View implements LocationListener,SensorEventL
 
     }
 
-    private void save_text(String str){
+    private void save_text_gps(String str){
+        Log.e(TAG, "save gps data");
         byte[] data = str.getBytes();
         if (data == null)
         {
@@ -175,7 +220,7 @@ public class AROverlayView extends View implements LocationListener,SensorEventL
         }
         FileOutputStream fileOutputStream = null;
         try{
-            File data_file = new File(EvsConsts.EVS_DIR, "data.txt");//new File(dataFilePath);
+            File data_file = new File(EvsConsts.EVS_DIR, "GPS_data.txt");
             fileOutputStream = new FileOutputStream(data_file,true);
             fileOutputStream.write(data);
             fileOutputStream.close();
@@ -188,18 +233,38 @@ public class AROverlayView extends View implements LocationListener,SensorEventL
         }
     }
 
-    private void save_point(double x,double y,double z,double yaw,double pitch,double roll){
-        String point = Double.toString(x) + "," + Double.toString(y)+","+Double.toString(z)+","+Double.toString(yaw)+","+Double.toString(pitch)+","+Double.toString(roll)+"\n";
-        save_text(point);
+    private void save_text_rotation(String str){
+        byte[] data = str.getBytes();
+        if (data == null)
+        {
+            return;
+        }
+        FileOutputStream fileOutputStream = null;
+        try{
+            File data_file = new File(EvsConsts.EVS_DIR, "Rotation_data.txt");
+            fileOutputStream = new FileOutputStream(data_file,true);
+            fileOutputStream.write(data);
+            fileOutputStream.close();
+        }
+        catch (FileNotFoundException e){
+            e.printStackTrace();
+            return;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
     public void onLocationChanged(Location location) {
         lastKnownLocation = location;
-        Log.e(TAG, "No GPS LocationManager is available");
+
         this.invalidate();
         if(logEnable) {
-            save_point(location.getLatitude(), location.getLongitude(), location.getAltitude(), lastKnownAngles[0], lastKnownAngles[1], lastKnownAngles[2]);
+            DateFormat format = new SimpleDateFormat("HH:mm:ss");
+            Date date = new Date(location.getTime());
+            String formatted = format.format(date);
+            String point = Double.toString(location.getLatitude()) + "," + Double.toString(location.getLongitude())+","+Double.toString(location.getAltitude())+","+Double.toString(lastKnownAngles[0])+","+Double.toString(lastKnownAngles[1])+","+Double.toString(lastKnownAngles[1])+ "," + formatted +"\n";
+            save_text_gps(point);
         }
     }
 
@@ -242,8 +307,7 @@ public class AROverlayView extends View implements LocationListener,SensorEventL
                 float x = (0.5f + (coordinateVector[0]) / coordinateVector[3]) * this.getWidth();
                 float y = (0.5f - coordinateVector[1] / coordinateVector[3]) * this.getHeight();
                 arPoint.draw(canvas, x, y);
-                canvas.drawText(arPoint.getName(), x - (30 * arPoint.getName().length() / 2), y - 80, paint);
-
+                canvas.drawText(arPoint.getName(), x , y - 20, paint);
             }
         }
 
@@ -255,9 +319,6 @@ public class AROverlayView extends View implements LocationListener,SensorEventL
 
         paint.setTextSize(25);
         canvas.drawText("km/h",this.getWidth()*0.5f,this.getHeight()-5,paint);
-
-        //paint.setTextSize(20);
-        //canvas.drawText("yawDiff = " + String.valueOf(angles.anglesDiff[0]) + " pitchDiff = " + String.valueOf(angles.anglesDiff[1]), this.getWidth() * 0.3f, this.getHeight() * 0.75f, paint);
 
         for (GestureWidget relWidgets : gestureWidgetsList) {
             if (relWidgets.isDrawable(headMovement)) {

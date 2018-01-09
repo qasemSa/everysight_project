@@ -15,6 +15,7 @@ import java.util.Date;
  */
 
 public class Clock extends GestureWidget {
+
     public Clock(boolean[] relativeLocation) {
         super(relativeLocation);
     }

@@ -6,6 +6,7 @@ import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.view.SurfaceView;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.FrameLayout;
 
 import com.everysight.activities.managers.EvsPopupManager;
@@ -55,7 +56,7 @@ public class MainActivity extends EvsCarouselActivity
     {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         //get the evs popup service
         final EvsPopupManager popupManager = (EvsPopupManager)getEvsContext().getSystemService(EvsContext.POPUP_SERVICE_EVS);
         //wait for the service to bind
@@ -70,21 +71,25 @@ public class MainActivity extends EvsCarouselActivity
         });
 
         cameraContainerLayout = (FrameLayout) findViewById(R.id.camera_container_layout);
+
+        // create AR view
         arOverlayView = new AROverlayView(this);
 
         //add Geo AR Points
-        //arOverlayView.addGeoARPoint(new GeoARPoint(32.776864, 35.023367, 226.5762, BitmapFactory.decodeResource(getResources(),R.drawable.arrow_32),"UL"));
-        //arOverlayView.addGeoARPoint(new GeoARPoint(32.775755, 35.02465, 220,BitmapFactory.decodeResource(getResources(),R.drawable.computer),""));
-        //arOverlayView.addGeoARPoint(new GeoARPoint(32.77588319, 35.02449852, 216,BitmapFactory.decodeResource(getResources(),R.drawable.home),""));
-        //arOverlayView.addGeoARPoint(new GeoARPoint(32.776864, 35.023367, 226.576, BitmapFactory.decodeResource(getResources(),R.drawable.electric),""));
 
-        arOverlayView.addGeoARPoint(new GeoARPoint(32.7759246, 35.0247359, 218.6347, BitmapFactory.decodeResource(getResources(),R.drawable.electric),"EE"));
-        arOverlayView.addGeoARPoint(new GeoARPoint(32.77701842, 35.0232078, 218.0667, BitmapFactory.decodeResource(getResources(),R.drawable.home),"Ulman"));
-        arOverlayView.addGeoARPoint(new GeoARPoint(32.7775454, 35.0223657, 218.336786, BitmapFactory.decodeResource(getResources(),R.drawable.arrow_32),"Amado"));
+        arOverlayView.addGeoARPoint(new GeoARPoint(32.777901, 35.022934, 222, BitmapFactory.decodeResource(getResources(),R.drawable.pi),"Amado"));
+
+        arOverlayView.addGeoARPoint(new GeoARPoint(32.777404, 35.023912, 222, BitmapFactory.decodeResource(getResources(),R.drawable.ulman),"Ulman"));
+
+        arOverlayView.addGeoARPoint(new GeoARPoint(32.777745, 35.021545, 235, BitmapFactory.decodeResource(getResources(),R.drawable.taub),"Taub"));
 
         //add gesture Widgets
+
         arOverlayView.addGestureWidget(new Clock(new boolean[]{true,false,false,false}));
+
         arOverlayView.addGestureWidget(new Date(new boolean[]{false,true,false,false}));
+
+
     }
 
     @Override
@@ -105,6 +110,7 @@ public class MainActivity extends EvsCarouselActivity
     {
         // clean up once we're done
         super.onDestroy();
+        arOverlayView.AROverlayDestroy();
     }
 
     @Override
@@ -130,15 +136,6 @@ public class MainActivity extends EvsCarouselActivity
     public void onTap()
     {
         if(first_launch) {
-           File data_file = new File(EvsConsts.EVS_DIR, "data.txt");
-            if(data_file.exists()){
-                data_file.delete();
-                try {
-                    data_file.createNewFile();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
             arOverlayView.setLogEnable(true);
             showPopup("Data Collecting Enabled");
         }else{
