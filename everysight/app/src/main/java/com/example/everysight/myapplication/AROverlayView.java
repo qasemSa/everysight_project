@@ -5,140 +5,265 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Typeface;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
+import android.location.Criteria;
 import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.opengl.Matrix;
+import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
+import com.everysight.environment.EvsConsts;
+import com.everysight.utilities.SensorOrientationUtils;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
 import java.util.List;
 
-import static android.content.ContentValues.TAG;
 
-
-public class AROverlayView extends View {
-
+public class AROverlayView extends View implements LocationListener,SensorEventListener {
+    private final String TAG = "AROverlayView";
     Context context;
-    private float[] rotatedProjectionMatrix = new float[16];
-    private Location currentLocation;
-    private List<ARPoint> arPoints;
-    public static LosAnglesActivity angles;
+
+    public static float[] lastKnownAngles;
+    private static HeadMovementsActivity angles;
+
+
+    private Location lastKnownLocation;
+    private int speed;
+
+    private float[] rotatedProjectionMatrix;
+    private float[] projectionMatrix;
+
+    private List<GeoARPoint> geoPointsList;
+    private List<GestureWidget> gestureWidgetsList;
+    private boolean logEnable;
 
     public AROverlayView(Context context) {
         super(context);
-
         this.context = context;
 
-        //Demo points
-        arPoints = new ArrayList<ARPoint>() {{
-            add(new ARPoint("ulman", 32.776864, 35.023367, 226.5762,false));
-            add(new ARPoint("try2", 32.775755, 35.02465, 220,false));
-            add(new ARPoint("try1", 32.77588319, 35.02449852, 216,false));
-            add(new ARPoint("try3", 32.7775962, 35.0219172, 228,false));
+        this.lastKnownLocation = null;
 
-            add(new ARPoint("x", 7, 0, 0,true));
-            add(new ARPoint("y", 0, 7, 0,true));
-            add(new ARPoint("z", 0, 0, 7,true));
-        }};
+        lastKnownAngles = null;
+        speed = 13;
 
-        angles = new LosAnglesActivity();
+        logEnable = false;
+        geoPointsList = new ArrayList<GeoARPoint>();
+        gestureWidgetsList = new ArrayList<GestureWidget>();
+
+        rotatedProjectionMatrix = new float[16];
+        projectionMatrix = new float[16];
+
+        initGps();
+        initRotationSensor();
+        initProjectionMatrix();
+
+        angles = new HeadMovementsActivity();
         angles.start();
     }
+    public void addGeoARPoint(GeoARPoint p){
+        geoPointsList.add(p);
+    }
+    public void addGestureWidget(GestureWidget g){
+        gestureWidgetsList.add(g);
+    }
+    public void setLogEnable(boolean flag){
+        logEnable = flag;
+        if(flag){
+            save_text("GPS data\n");
+            save_text("Lat       Lon        Alt         Yaw         Pitch       Roll\n");
+        }
+    }
+    private void initProjectionMatrix() {
+        float ratio = (float) (640.0 /  480.0);
+        final int OFFSET = 0;
+        final float LEFT = -ratio;
+        final float RIGHT = ratio;
+        final float BOTTOM = -1;
+        final float TOP = 1;
+        Matrix.frustumM(projectionMatrix, OFFSET, LEFT, RIGHT, BOTTOM, TOP, 5, 2000);
+    }
+    private void initGps() {
+        LocationManager mLocationManager = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
+        if (mLocationManager == null) {
+            Log.e(TAG, "No GPS LocationManager is available");
+            return;
+        }
 
-    public void updateRotatedProjectionMatrix(float[] rotatedProjectionMatrix) {
-        this.rotatedProjectionMatrix = rotatedProjectionMatrix;
+        String provider = mLocationManager.getBestProvider(new Criteria(), false);
+        if (provider == null) {
+            Log.e(TAG, "No GPS provider?");
+            return;
+        }
+
+        // lets get the last known location
+        Location location = mLocationManager.getLastKnownLocation(provider);
+        if (location != null) {
+            lastKnownLocation = mLocationManager.getLastKnownLocation(provider);
+        }
+
+        // register for updates - get GPS point as soon as it is available
+        mLocationManager.requestLocationUpdates(provider, 0, 0, this);
+        if (mLocationManager != null) {
+            lastKnownLocation = mLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+        }
+
+    }
+
+    private void initRotationSensor(){
+        //init los manager
+        SensorManager mSensorManager = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
+        Sensor mQuaternion = mSensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+        mSensorManager.registerListener(this, mQuaternion, SensorManager.SENSOR_DELAY_FASTEST);
+    }
+
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+        if (event == null)
+            return;
+        int sensor_type = event.sensor.getType();
+        if (sensor_type != Sensor.TYPE_ROTATION_VECTOR)
+            return;
+        if(lastKnownAngles == null){
+            lastKnownAngles = new float[3];
+        }
+        float[] quaternion = event.values.clone();//Quarernion is [x,y,z,w]
+        float[] anglesInRadians = SensorOrientationUtils.QuaternionToAngles(quaternion);
+        for (int i = 0; i < 3; i++) {
+            lastKnownAngles[i] = (float) Math.toDegrees(anglesInRadians[i]);
+        }
+        upadteRotatedProjectionMatrix();
+
         this.invalidate();
     }
 
-    public void updateCurrentLocation(Location currentLocation){
-        this.currentLocation = currentLocation;
-        Log.e(TAG, "update current location !");
+    private void upadteRotatedProjectionMatrix() {
+        float yaw = lastKnownAngles[0];
+        float pitch = lastKnownAngles[1];
+        float roll = lastKnownAngles[2];
+
+        float[] rotationMatrixFromAnglesX = new float[16];
+        Matrix.setRotateM(rotationMatrixFromAnglesX,0,-pitch,1,0,0);
+
+        float[] rotationMatrixFromAnglesY = new float[16];
+        Matrix.setRotateM(rotationMatrixFromAnglesY,0,yaw,0,1,0);
+
+        float[] rotationMatrixFromAnglesZ = new float[16];
+        Matrix.setRotateM(rotationMatrixFromAnglesZ,0,roll,0,0,1);
+
+        float[] rotationMatrixFromAngles = new float[16];
+        Matrix.multiplyMM(rotationMatrixFromAngles,0,rotationMatrixFromAnglesX,0,rotationMatrixFromAnglesY,0);
+
+        Matrix.multiplyMM(rotatedProjectionMatrix,0,projectionMatrix,0,rotationMatrixFromAngles,0);
+
+    }
+
+    private void save_text(String str){
+        byte[] data = str.getBytes();
+        if (data == null)
+        {
+            return;
+        }
+        FileOutputStream fileOutputStream = null;
+        try{
+            File data_file = new File(EvsConsts.EVS_DIR, "data.txt");//new File(dataFilePath);
+            fileOutputStream = new FileOutputStream(data_file,true);
+            fileOutputStream.write(data);
+            fileOutputStream.close();
+        }
+        catch (FileNotFoundException e){
+            e.printStackTrace();
+            return;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void save_point(double x,double y,double z,double yaw,double pitch,double roll){
+        String point = Double.toString(x) + "," + Double.toString(y)+","+Double.toString(z)+","+Double.toString(yaw)+","+Double.toString(pitch)+","+Double.toString(roll)+"\n";
+        save_text(point);
+    }
+
+    @Override
+    public void onLocationChanged(Location location) {
+        lastKnownLocation = location;
+        Log.e(TAG, "No GPS LocationManager is available");
         this.invalidate();
+        if(logEnable) {
+            save_point(location.getLatitude(), location.getLongitude(), location.getAltitude(), lastKnownAngles[0], lastKnownAngles[1], lastKnownAngles[2]);
+        }
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+    }
+
+    @Override
+    public void onStatusChanged(String provider, int status, Bundle extras) {
+    }
+
+    @Override
+    public void onProviderEnabled(String provider) {
+    }
+
+    @Override
+    public void onProviderDisabled(String provider) {
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
 
-        float radius = 20;
         Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         paint.setStyle(Paint.Style.FILL);
         paint.setColor(Color.YELLOW);
         paint.setTypeface(Typeface.create(Typeface.SERIF, Typeface.BOLD));
-        paint.setTextSize(55);
-        int speed = 56;//
-        if (currentLocation == null) {
-            canvas.drawText(Integer.toString(speed),this.getWidth()*0.5f,this.getHeight()-30,paint);
-            paint.setTextSize(25);
-            canvas.drawText("km/h",this.getWidth()*0.5f,this.getHeight(),paint);
-            currentLocation = arPoints.get(0).getLocation();
-        }
-        speed = (int) Math.round(currentLocation.getSpeed()*3.6);
-        canvas.drawText(Integer.toString(speed),this.getWidth()*0.5f,this.getHeight()-30,paint);
-        paint.setTextSize(25);
-        canvas.drawText("km/h",this.getWidth()*0.5f,this.getHeight(),paint);
-        for (int i = 0; i < arPoints.size(); i ++) {
-            float[] currentLocationInECEF = LocationHelper.WSG84toECEF(currentLocation);
-            float distanceToPoint = currentLocation.distanceTo(arPoints.get(i).getLocation());
-            float[] pointInECEF = LocationHelper.WSG84toECEF(arPoints.get(i).getLocation());
-            float[] pointInENU = arPoints.get(i).pointInENU(currentLocation, currentLocationInECEF);
+        paint.setTextSize(20);
 
-            float[] cameraCoordinateVector = new float[4];
-            Matrix.multiplyMV(cameraCoordinateVector, 0, rotatedProjectionMatrix, 0, pointInENU, 0);
-            //radius =  60 - distanceToPoint;
-            // cameraCoordinateVector[2] is z, that always less than 0 to display on right position
-            // if z > 0, the point will display on the opposite
-            if (cameraCoordinateVector[2] < 0 ){//&& radius > 0) {
-                float x  = (0.5f + (cameraCoordinateVector[0])/cameraCoordinateVector[3]) * this.getWidth() ;
-                float y = (0.5f - cameraCoordinateVector[1]/cameraCoordinateVector[3]) * this.getHeight() ;
-                if (x > this.getWidth()){
-                    Log.e(TAG, "drawing x " + String.valueOf(this.getWidth()));
-                }
-                if (y > this.getHeight()){
-                    Log.e(TAG, "drawing y " + String.valueOf(this.getHeight()));
-                }
-                Log.e(TAG, "drawing points " + String.valueOf(x) + " " + String.valueOf(y));
-                Log.e(TAG, "cameraCoordinateVector " +String.valueOf(cameraCoordinateVector[0])+" "+String.valueOf(cameraCoordinateVector[1])+" "+String.valueOf(cameraCoordinateVector[2])+" "+String.valueOf(cameraCoordinateVector[3])+" ");
-                Log.e(TAG, "rotatedProjectionMatrix " +String.valueOf(rotatedProjectionMatrix[0])+" "+String.valueOf(rotatedProjectionMatrix[1])+" "+String.valueOf(rotatedProjectionMatrix[2])+" "+String.valueOf(rotatedProjectionMatrix[3])+" ");
-                Log.e(TAG, "pointInENU " +String.valueOf(pointInENU[0])+" "+String.valueOf(pointInENU[1])+" "+String.valueOf(pointInENU[2])+" "+String.valueOf(pointInENU[3])+" ");
-                //Bitmap arrow_pic = BitmapFactory.decodeResource(getResources(),R.drawable.arrow_32);
-                //canvas.drawBitmap(arrow_pic,x,y,null);
-                if(distanceToPoint>=4) {
-                    radius = Math.max((4 / distanceToPoint) * 50,10);
-                }else{
-                    radius = 50;
-                }
-                canvas.drawCircle(x, y, radius, paint);
-                canvas.drawText(arPoints.get(i).getName(), x - (30 * arPoints.get(i).getName().length() / 2), y - 80, paint);
+        if (lastKnownLocation == null) {
+            lastKnownLocation = geoPointsList.get(0).getLocation();
+            return;
+        }
+
+        for (GeoARPoint arPoint : geoPointsList) {
+            float[] pointInENU = arPoint.pointInENU(lastKnownLocation);
+            float[] coordinateVector = new float[4];
+            Matrix.multiplyMV(coordinateVector, 0, rotatedProjectionMatrix, 0, pointInENU, 0);
+            if (coordinateVector[2] < 0) {
+                float x = (0.5f + (coordinateVector[0]) / coordinateVector[3]) * this.getWidth();
+                float y = (0.5f - coordinateVector[1] / coordinateVector[3]) * this.getHeight();
+                arPoint.draw(canvas, x, y);
+                canvas.drawText(arPoint.getName(), x - (30 * arPoint.getName().length() / 2), y - 80, paint);
+
             }
         }
+
         boolean[] headMovement = angles.headMovement();
 
-        paint.setTextSize(20);
-        Calendar cal = Calendar.getInstance();
-        Date date = cal.getTime();
-        DateFormat timeFormat = new SimpleDateFormat("HH:mm:ss");
-        DateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy");
-        String formattedTime = timeFormat.format(date);
-        String formattedDate = dateFormat.format(date);
-        canvas.drawText("yawDiff = "+String.valueOf(angles.anglesDiff[0])+" pitchDiff = "+String.valueOf(angles.anglesDiff[1]),this.getWidth()*0.3f,this.getHeight()*0.75f,paint);
+        speed = (int) Math.round(lastKnownLocation.getSpeed()*3.6);
+        paint.setTextSize(25);
+        canvas.drawText(Integer.toString(speed),this.getWidth()*0.5f+20,this.getHeight()-30,paint);
 
-        if(headMovement[0]){
-            canvas.drawText(formattedTime,this.getWidth()*0.5f-50,this.getHeight()*0.5f,paint);
-        }
-        if(headMovement[1]){
-            canvas.drawText(formattedDate,this.getWidth()*0.5f-80,this.getHeight()*0.5f,paint);
-        }
-        if(headMovement[2]){
-            canvas.drawText("UP",this.getWidth()*0.5f,this.getHeight()*0.5f,paint);
-        }
-        if(headMovement[3]){
+        paint.setTextSize(25);
+        canvas.drawText("km/h",this.getWidth()*0.5f,this.getHeight()-5,paint);
 
-            canvas.drawText("DOWN",this.getWidth()*0.5f-10,this.getHeight()*0.5f,paint);
+        //paint.setTextSize(20);
+        //canvas.drawText("yawDiff = " + String.valueOf(angles.anglesDiff[0]) + " pitchDiff = " + String.valueOf(angles.anglesDiff[1]), this.getWidth() * 0.3f, this.getHeight() * 0.75f, paint);
+
+        for (GestureWidget relWidgets : gestureWidgetsList) {
+            if (relWidgets.isDrawable(headMovement)) {
+                relWidgets.draw(canvas, this.getWidth() * 0.5f, this.getHeight() * 0.5f);
+            }
         }
     }
+
 }

@@ -35,7 +35,7 @@
             android:layout_gravity="center"
             android:layout_marginTop="30dp"
             android:gravity="center_horizontal|top"
-            android:text="No location yet!"
+            android:text=""
             android:textAppearance="@android:style/TextAppearance.DeviceDefault.Large"
             android:textColor="@color/evsGreen" />
 
@@ -46,7 +46,7 @@
             android:layout_gravity="center"
             android:layout_marginTop="5dp"
             android:gravity="center_horizontal|top"
-            android:text="Press to start GPS"
+            android:text=""
             android:textColor="@color/evsWhite"
             android:textSize="20sp" />
     </LinearLayout>

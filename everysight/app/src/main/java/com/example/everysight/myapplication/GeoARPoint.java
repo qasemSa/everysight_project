@@ -1,12 +1,39 @@
 package com.example.everysight.myapplication;
 
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.location.Location;
 
-public class LocationHelper {
-    private final static double WGS84_A = 6378137.0;                  // WGS 84 semi-major axis constant in meters
+public class GeoARPoint implements Drawable{
+
+	private final static double WGS84_A = 6378137.0;                  // WGS 84 semi-major axis constant in meters
     private final static double WGS84_E2 = 0.00669437999014;          // square of WGS 84 eccentricity
 
-    public static float[] WSG84toECEF(Location location) {
+    private Location location;
+    private Bitmap drawableObject;
+    private String name;
+
+    public GeoARPoint(double lat, double lon, double altitude, Bitmap drawableObject,String name) {
+        location = new Location("ARPoint");
+        location.setLatitude(lat);
+        location.setLongitude(lon);
+        location.setAltitude(altitude);
+        this.drawableObject = drawableObject;
+        this.name = name;
+    }
+
+    public String getName(){
+        return name;
+    }
+    public float[] pointInENU(Location currentLocation){
+        return ECEFtoENU(currentLocation, WSG84toECEF(currentLocation), WSG84toECEF(location));
+    }
+
+    public Location getLocation() {
+        return location;
+    }
+
+    private  float[] WSG84toECEF(Location location) {
         double radLat = Math.toRadians(location.getLatitude());
         double radLon = Math.toRadians(location.getLongitude());
 
@@ -24,12 +51,9 @@ public class LocationHelper {
         return new float[] {x , y, z};
     }
 
-    public static float[] ECEFtoENU(Location currentLocation, float[] ecefCurrentLocation, float[] ecefPOI) {
+    private  float[] ECEFtoENU(Location currentLocation, float[] ecefCurrentLocation, float[] ecefPOI) {
         double radLat = Math.toRadians(currentLocation.getLatitude());
         double radLon = Math.toRadians(currentLocation.getLongitude());
-
-        //radLat = Math.toRadians(32.77601);
-        //radLon = Math.toRadians(35.024576);
 
         float clat = (float)Math.cos(radLat);
         float slat = (float)Math.sin(radLat);
@@ -51,6 +75,10 @@ public class LocationHelper {
         //third coordinate is -north
 
         return new float[] {east , up, -north, 1};
-      //  return new float[]{0,-5,0,1};
+    }
+
+    @Override
+    public void draw(Canvas canvas, float x, float y) {
+        canvas.drawBitmap(drawableObject,x,y,null);
     }
 }

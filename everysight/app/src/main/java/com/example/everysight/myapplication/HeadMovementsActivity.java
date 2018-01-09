@@ -4,14 +4,15 @@ package com.example.everysight.myapplication;
  * Created by qasemsayah on 12/30/17.
  */
 
-public class LosAnglesActivity extends Thread {
+public class HeadMovementsActivity extends Thread {
     public float[] anglesDiff;
     private float[] prevAngles;
     private final float rotationXThreshold = 50;
     private final float rotationYThreshold = 30;
-    private final long timeMilis = 500;
+    private final long timeMilis = 1000;
     private boolean[] headMovements; // Right Left Up Down
-    LosAnglesActivity(){
+
+    HeadMovementsActivity(){
         anglesDiff = new float[]{0,0,0};
         prevAngles = new float[]{0,0,0};
         headMovements = new boolean[]{false,false,false,false};
@@ -20,7 +21,7 @@ public class LosAnglesActivity extends Thread {
     @Override
     public void run() {
         float[] newAngles = new float[3];
-        while(MainActivity.mLosAngles == null) {
+        while(AROverlayView.lastKnownAngles == null) {
             try {
                 sleep(timeMilis);
             } catch (InterruptedException e) {
@@ -28,11 +29,11 @@ public class LosAnglesActivity extends Thread {
             }
         }
         for (int i = 0; i < 3; i++) {
-            prevAngles[i] = (float) Math.toDegrees(MainActivity.mLosAngles[i]);
+            prevAngles[i] = AROverlayView.lastKnownAngles[i];
         }
         while(true) {
             for (int i = 0; i < 3; i++) {
-                newAngles[i] = (float) Math.toDegrees(MainActivity.mLosAngles[i]);
+                newAngles[i] = AROverlayView.lastKnownAngles[i];
                 if(i == 0 && newAngles[i]>0 && prevAngles[i]<0){
                     float diff = newAngles[i]-prevAngles[i];
                     if(diff < 180){
